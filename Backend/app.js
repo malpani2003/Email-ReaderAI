@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 const { callFunction } = require("./classifyEmail");
 const { google } = require("googleapis");
 const { exec } = require("child_process");
@@ -11,15 +11,12 @@ const base64 = require("base-64");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// const open = require('open');
-// const msal = require('@azure/msal-node');
-// console.log('All Environment Variables:', process.env);
 
+// Load Client ID and Client Secret from environment variables
 const ClientID = process.env.CLIENT_ID;
 const ClientSecret = process.env.CLIENT_SECRET;
 
-// console.log(ClientID,ClientSecret);
-
+// Create an OAuth2 client with the given credentials
 const oauth2Client = new google.auth.OAuth2(
   ClientID,
   ClientSecret,
@@ -28,6 +25,7 @@ const oauth2Client = new google.auth.OAuth2(
 
 let gmailTokens = null;
 
+// Endpoint to get the Google OAuth authentication URL
 app.get("/api/auth/gmail", (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
@@ -37,26 +35,8 @@ app.get("/api/auth/gmail", (req, res) => {
   res.json({ authUrl });
 });
 
-// app.get('/api/auth/outlook', (req, res) => {
-//   const msalConfig = {
-//     auth: {
-//       clientId: YOUR_CLIENT_ID,
-//       authority: `https://login.microsoftonline.com/YOUR_TENANT_ID`,
-//       clientSecret: YOUR_CLIENT_SECRET,
-//     },
-//   };
+// Function to send an email using Gmail API
 
-//   const cca = new msal.ConfidentialClientApplication(msalConfig);
-
-//   const authUrlParams = {
-//     scopes: ["Mail.Read"],
-//     redirectUri: YOUR_REDIRECT_URL,
-//   };
-
-//   cca.getAuthCodeUrl(authUrlParams).then((authUrl) => {
-//     res.json({ authUrl });
-//   }).catch((error) => res.status(500).json({ error: error.message }));
-// });
 const sendEmail = async (to, subject, body, threadId, messageId) => {
   oauth2Client.setCredentials(gmailTokens);
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
@@ -71,6 +51,7 @@ const sendEmail = async (to, subject, body, threadId, messageId) => {
 
   console.log(raw);
 
+  // Send the email using Gmail API
   const res = await gmail.users.messages.send({
     userId: "me",
     requestBody: {
@@ -81,9 +62,13 @@ const sendEmail = async (to, subject, body, threadId, messageId) => {
   return res.data;
 };
 
+// Function to fetch Gmail emails and process them
 const getGmailEmails = async () => {
   oauth2Client.setCredentials(gmailTokens);
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+
+   // Fetch unread primary emails from the inbox
   const response = await gmail.users.messages.list({
     userId: "me",
     maxResults: 1,
@@ -91,11 +76,14 @@ const getGmailEmails = async () => {
   });
   const messages = response.data.messages;
 
+  // Process each email
   const emailPromises = messages.map(async (message) => {
     const msg = await gmail.users.messages.get({
       userId: "me",
       id: message.id,
     });
+
+    // Extract headers and email content
     const headers = msg.data.payload.headers;
     const from =
       headers.find((header) => header.name === "From")?.value || "Unknown";
@@ -105,9 +93,13 @@ const getGmailEmails = async () => {
     const messageId =
       headers.find((header) => header.name === "Message-ID")?.value || "";
     const threadId = msg.data.threadId;
-    console.log(to, from);
+    // console.log(to, from);
+
+     // Use Llama AI to generate a response based on the email content
     const responseFromAI = await callFunction(snippet);
     try {
+
+      // Send the generated response email
       const result = await sendEmail(
         from,
         responseFromAI["subject"] + responseFromAI["category"],
@@ -115,6 +107,7 @@ const getGmailEmails = async () => {
         threadId,
         messageId
       );
+      // Mark the email as read
       await gmail.users.messages.modify({
         userId: 'me',
         id: message.id,
@@ -132,6 +125,7 @@ const getGmailEmails = async () => {
   return Promise.all(emailPromises);
 };
 
+// Endpoint to handle OAuth callback and process Gmail emails
 app.get("/api/emails/gmail", (req, res) => {
   const code = req.query.code;
 
@@ -143,6 +137,7 @@ app.get("/api/emails/gmail", (req, res) => {
     oauth2Client.setCredentials(tokens);
     gmailTokens = tokens;
 
+     // Fetch and process emails after authentication
     try {
       const emails = await getGmailEmails();
       res.json({ emails });
