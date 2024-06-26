@@ -24,6 +24,7 @@ This project sets up an server to interact with the Gmail API. It fetches unread
     npm install
     
 2. Create a.env file in Backend folder
+    ```sh
     OPENAPI_KEY=LL-7r2hIpUovk66kEdUU3NYzyN9zmwrpBwFNohHimqPGWpbQzKfWyYvIU5wFpnmfATK
     CLIENT_ID=413086726551-sl2lmi5fjj450ut5dphv7oh1jsaakide.apps.googleusercontent.com
     CLIENT_SECRET=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
@@ -43,11 +44,11 @@ This project sets up an server to interact with the Gmail API. It fetches unread
 ## Functions
 1. sendEmail(to, subject, body, threadId, messageId) : Sends an email using the Gmail API.
 
-    to: Recipient email address
-    subject: Email subject
-    body: Email body content
-    threadId: Gmail thread ID
-    messageId: Gmail message ID
+    - to: Recipient email address
+    - subject: Email subject
+    - body: Email body content
+    - threadId: Gmail thread ID
+    - messageId: Gmail message ID
 
 2. getGmailEmails() : Fetches unread emails from the primary inbox, processes them using a custom function, and sends responses.
 
