@@ -1,6 +1,8 @@
 # Gmail Email Processor
 This project sets up an server to interact with the Gmail API. It fetches unread primary emails, processes them using a Llama AI function, and sends responses via the Gmail API.
-Working Video Link -: 
+
+- Working Video Link -: https://youtu.be/hzbCu2HMrzU?si=gZd5vZ0jKpQxM7mN 
+
 ## Features
 
 - Fetch unread primary emails from Gmail
